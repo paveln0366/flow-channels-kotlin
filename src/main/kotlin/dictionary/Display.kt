@@ -1,25 +1,20 @@
 package org.example.dictionary
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.*
 import java.awt.BorderLayout
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import javax.swing.*
 
+@OptIn(FlowPreview::class)
 object Display {
 
-    private lateinit var queries: Flow<String>
+    private val queries = Channel<String>()
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val repository = Repository
-    private var loadingJob: Job? = null
 
     private val enterWordLabel = JLabel("Enter word: ")
     private val searchField = JTextField(20).apply {
@@ -52,7 +47,9 @@ object Display {
     }
 
     private fun loadDefinitions() {
-
+        scope.launch {
+            queries.send(searchField.text.trim())
+        }
     }
 
     fun show() {
@@ -60,17 +57,16 @@ object Display {
     }
 
     init {
-        queries
+        queries.consumeAsFlow()
             .onEach {
                 searchButton.isEnabled = false
                 resultArea.text = "Loading..."
-            }.map {
-                repository.loadDefinition(it)
-            }
+            }.debounce(500)
             .map {
+                repository.loadDefinition(it)
+            }.map {
                 it.joinToString("\n\n").ifEmpty { "Not found" }
-            }
-            .onEach {
+            }.onEach {
                 resultArea.text = it
                 searchButton.isEnabled = true
             }.launchIn(scope)

@@ -1,5 +1,6 @@
 plugins {
-    kotlin("jvm") version "2.3.10"
+    kotlin("jvm") version "2.3.21"
+    kotlin("plugin.serialization") version "2.3.21"
 }
 
 group = "org.example"
@@ -12,6 +13,7 @@ repositories {
 dependencies {
     testImplementation(kotlin("test"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0-rc01")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
 }
 
 kotlin {

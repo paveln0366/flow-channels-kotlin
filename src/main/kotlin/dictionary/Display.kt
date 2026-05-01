@@ -12,6 +12,7 @@ import javax.swing.*
 object Display {
 
     private val queries = Channel<String>()
+    private val state = MutableSharedFlow<ScreenState>()
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val repository = Repository
@@ -59,17 +60,46 @@ object Display {
     init {
         queries.consumeAsFlow()
             .onEach {
-                searchButton.isEnabled = false
-                resultArea.text = "Loading..."
+                state.emit(ScreenState.Loading)
             }.debounce(500)
             .map {
-                repository.loadDefinition(it)
-            }.map {
-                it.joinToString("\n\n").ifEmpty { "Not found" }
-            }.onEach {
-                resultArea.text = it
-                searchButton.isEnabled = true
+                if (it.isEmpty()) {
+                    state.emit(ScreenState.Initial)
+                } else {
+                    val result = repository.loadDefinition(it)
+                    if (result.isEmpty()) {
+                        state.emit(ScreenState.NotFound)
+                    } else {
+                        state.emit(ScreenState.DefinitionsLoaded(result))
+                    }
+                }
             }.launchIn(scope)
+
+        state.onStart {
+            emit(ScreenState.Initial)
+        }.onEach {
+            when (it) {
+                is ScreenState.DefinitionsLoaded -> {
+                    resultArea.text = it.definitions.joinToString("\n\n")
+                    searchButton.isEnabled = true
+                }
+
+                ScreenState.Initial -> {
+                    resultArea.text = ""
+                    searchButton.isEnabled = false
+                }
+
+                ScreenState.Loading -> {
+                    resultArea.text = "Loading..."
+                    searchButton.isEnabled = false
+                }
+
+                ScreenState.NotFound -> {
+                    resultArea.text = "Not found"
+                    searchButton.isEnabled = true
+                }
+            }
+        }.launchIn(scope)
     }
 }
 

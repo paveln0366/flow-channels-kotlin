@@ -58,7 +58,7 @@ object Display {
     }
 
     init {
-        queries.consumeAsFlow()
+        queries.receiveAsFlow()
             .onEach {
                 state.emit(ScreenState.Loading)
             }.debounce(500)
@@ -73,7 +73,12 @@ object Display {
                         state.emit(ScreenState.DefinitionsLoaded(result))
                     }
                 }
-            }.launchIn(scope)
+            }.retry {
+                println(it)
+                state.emit(ScreenState.Error)
+                true
+            }
+            .launchIn(scope)
 
         state.onEach {
             when (it) {
@@ -94,6 +99,11 @@ object Display {
 
                 ScreenState.NotFound -> {
                     resultArea.text = "Not found"
+                    searchButton.isEnabled = true
+                }
+
+                ScreenState.Error -> {
+                    resultArea.text = "Something went wrong"
                     searchButton.isEnabled = true
                 }
             }

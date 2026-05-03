@@ -22,12 +22,10 @@ object Repository {
                 val url = URL(urlString)
                 connection = (url.openConnection() as HttpURLConnection).apply {
                     addRequestProperty(HEADER_KEY, API_KEY)
+                    readTimeout = 5000
                 }
                 val response = connection.inputStream.bufferedReader().readText()
                 json.decodeFromString<Definition>(response).mapDefinitionToList()
-            } catch (e: Exception) {
-                println(e)
-                listOf()
             } finally {
                 connection?.disconnect()
             }

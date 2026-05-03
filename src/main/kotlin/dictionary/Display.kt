@@ -11,7 +11,7 @@ import javax.swing.*
 @OptIn(FlowPreview::class)
 object Display {
 
-    private val queries = Channel<String>()
+    private val queries = MutableSharedFlow<String>()
     val state = MutableStateFlow<ScreenState>(ScreenState.Initial)
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -49,7 +49,7 @@ object Display {
 
     private fun loadDefinitions() {
         scope.launch {
-            queries.send(searchField.text.trim())
+            queries.emit(searchField.text.trim())
         }
     }
 
@@ -58,7 +58,7 @@ object Display {
     }
 
     init {
-        queries.receiveAsFlow()
+        queries
             .onEach {
                 state.emit(ScreenState.Loading)
             }.debounce(500)
